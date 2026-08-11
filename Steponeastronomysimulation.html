@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Space Simulation</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="space"></canvas>
+
+    <script>
+        const canvas = document.getElementById('space');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const G = 0.5;
+
+        class Body {
+            constructor(x, y, vx, vy, mass, radius, color) {
+                this.x = x; this.y = y;
+                this.vx = vx; this.vy = vy;
+                this.mass = mass;
+                this.radius = radius;
+                this.color = color;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+        }
+
+        const sun = new Body(canvas.width / 2, canvas.height / 2, 0, 0, 1000, 15, 'yellow');
+        const planet = new Body(canvas.width / 2, canvas.height / 2 - 150, 1.8, 0, 10, 6, 'cyan');
+
+        function loop() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Orbit trails ????
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const dx = sun.x - planet.x;
+            const dy = sun.y - planet.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const force = (G * sun.mass * planet.mass) / (dist * dist);
+
+            planet.vx += (force * (dx / dist)) / planet.mass;
+            planet.vy += (force * (dy / dist)) / planet.mass;
+
+            planet.update();
+            sun.draw();
+            planet.draw();
+
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+</html>
