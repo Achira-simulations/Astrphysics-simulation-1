@@ -1,67 +1,203 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Space Simulation</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Astrophysics Simulation</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; }
-        canvas { display: block; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050510;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        label {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        input {
+            width: 80px;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #111;
+            color: #fff;
+            text-align: center;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
     </style>
 </head>
 <body>
-    <canvas id="space"></canvas>
+
+    <div id="control-panel">
+        <div class="control-group">
+            <label>කේන්ද්‍රීය ස්කන්ධය (M1)</label>
+            <input type="number" id="sunMass" value="2000">
+        </div>
+        <div class="control-group">
+            <label>කක්ෂගත ස්කන්ධය (M2)</label>
+            <input type="number" id="planetMass" value="10">
+        </div>
+        <div class="control-group">
+            <label>ග්‍රහලෝක අරය (Radius)</label>
+            <input type="number" id="planetRadius" value="6">
+        </div>
+        <div class="control-group">
+            <label>ආරම්භක ප්‍රවේගය (Vy)</label>
+            <input type="number" id="initVy" step="0.1" value="2.5">
+        </div>
+        <button onclick="resetSimulation()">යළි අරඹන්න (Update)</button>
+    </div>
+
+    <canvas id="simCanvas"></canvas>
 
     <script>
-        const canvas = document.getElementById('space');
+        const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
 
-        const G = 0.5;
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-        class Body {
-            constructor(x, y, vx, vy, mass, radius, color) {
-                this.x = x; this.y = y;
-                this.vx = vx; this.vy = vy;
+        const G = 1; // Gravitational constant for visual scale
+
+        let sun, planet;
+
+        class CelestialBody {
+            constructor(x, y, vx, vy, mass, radius, color, isStatic = false) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
                 this.mass = mass;
                 this.radius = radius;
                 this.color = color;
+                this.isStatic = isStatic;
             }
 
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.fillStyle = this.color;
+                ctx.shadowBlur = this.isStatic ? 20 : 5;
+                ctx.shadowColor = this.color;
                 ctx.fill();
+                ctx.shadowBlur = 0;
             }
 
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
+            updatePosition() {
+                if (!this.isStatic) {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                }
             }
         }
 
-        const sun = new Body(canvas.width / 2, canvas.height / 2, 0, 0, 1000, 15, 'yellow');
-        const planet = new Body(canvas.width / 2, canvas.height / 2 - 150, 1.8, 0, 10, 6, 'cyan');
+        function resetSimulation() {
+            const m1 = parseFloat(document.getElementById('sunMass').value) || 2000;
+            const m2 = parseFloat(document.getElementById('planetMass').value) || 10;
+            const r2 = parseFloat(document.getElementById('planetRadius').value) || 6;
+            const vy = parseFloat(document.getElementById('initVy').value) || 2.5;
 
-        function loop() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Orbit trails ????
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            sun = new CelestialBody(cx, cy, 0, 0, m1, 18, '#ffcc00', true);
+            planet = new CelestialBody(cx + 200, cy, 0, -vy, m2, r2, '#00e5ff');
+            
+            // Background clear
+            ctx.fillStyle = '#050510';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
+        function applyGravity() {
             const dx = sun.x - planet.x;
             const dy = sun.y - planet.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const force = (G * sun.mass * planet.mass) / (dist * dist);
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-            planet.vx += (force * (dx / dist)) / planet.mass;
-            planet.vy += (force * (dy / dist)) / planet.mass;
+            // ගැටීම වැළැක්වීමට අවම සීමාවක් (Collision avoidance threshold)
+            if (distance > sun.radius + planet.radius) {
+                // Newton's Gravity Formula: F = G * (m1 * m2) / r^2
+                const force = (G * sun.mass * planet.mass) / (distance * distance);
 
-            planet.update();
+                // a = F / m
+                const ax = (force * (dx / distance)) / planet.mass;
+                const ay = (force * (dy / distance)) / planet.mass;
+
+                planet.vx += ax;
+                planet.vy += ay;
+            }
+        }
+
+        function animate() {
+            // කක්ෂ පථය (Orbit trail) පෙන්වීම සඳහා විනිවිද පෙනෙන ස්ථරයක්
+            ctx.fillStyle = 'rgba(5, 5, 16, 0.08)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            applyGravity();
+            planet.updatePosition();
+
             sun.draw();
             planet.draw();
 
-            requestAnimationFrame(loop);
+            requestAnimationFrame(animate);
         }
-        loop();
+
+        resetSimulation();
+        animate();
     </script>
 </body>
 </html>
